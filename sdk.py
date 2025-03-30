@@ -230,11 +230,14 @@ class WXReadSDK:
         self,
         loop_num: int = 5,
         residence_second: int = 60,  # 单位秒,
+        onStart: Callable = None,
         onSuccess: Callable = None,
         onRefresh: Callable = None,
         onFail: Callable = None,
         onFinish: Callable = None,
     ):
+        if not onStart:  # 定义默认回调函数，避免报错导致程序中断
+            onStart = logger.info
         if not onSuccess:  # 定义默认回调函数，避免报错导致程序中断
             onSuccess = logger.debug
         if not onRefresh:  # 定义默认回调函数，避免报错导致程序中断
@@ -246,7 +249,7 @@ class WXReadSDK:
 
         index = 1
         while index <= loop_num:
-            logger.info(f"⏱️ 尝试第 {index} 次阅读...")
+            onStart(f"⏱️ 尝试第 {index}/{loop_num} 次阅读...")
             resData: dict = self.read()
             if "succ" in resData:
                 index += 1
