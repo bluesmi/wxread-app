@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import json
 import random
@@ -193,7 +194,7 @@ class WXReadSDK:
         config = cls.parse_curl(curl_command)
         return cls(**config)  # type: ignore
 
-    def run(
+    async def run(
         self,
         loop_num: int = 5,
         residence_second: int = 60,  # 单位秒,
@@ -220,7 +221,7 @@ class WXReadSDK:
             resData: dict = self.read()
             if "succ" in resData:
                 index += 1
-                time.sleep(residence_second)
+                await asyncio.sleep(residence_second)
                 onSuccess(
                     f"✅ 阅读成功，阅读进度：{(index - 1) * (residence_second / 60)} 分钟"
                 )
@@ -233,4 +234,4 @@ class WXReadSDK:
                 else:
                     msg = "❌ 无法获取新密钥或者WXREAD_CURL_BASH配置有误，终止运行。"
                     onFail(msg)
-        onFinish("🎉 阅读脚本已完成！")
+        onFinish(f"🎉 阅读脚本已完成！成功阅读 {loop_num*(residence_second / 60)} 分钟")

@@ -1,3 +1,4 @@
+import asyncio
 import os
 import tkinter as tk
 import tkinter.messagebox
@@ -7,6 +8,9 @@ from loguru import logger
 
 from sdk import WXReadSDK
 
+# 去除默认的日志处理器，避免重复打印日志到控制台的问题
+# logger.remove()
+
 # 定义全局样式常量
 FONT_FAMILY = "Courier New"
 FONT_SIZE_NORMAL = 12
@@ -15,6 +19,9 @@ TEXT_COLOR = "black"
 BUTTON_BG_NORMAL = "#e0e0e0"
 BUTTON_BG_ACTIVE = "#d0d0d0"
 CONFIG_FILE = "curl_config.sh"
+# 新增全局变量用于设置宽高
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 600
 
 LEVEL_COLORS = {
     "DEBUG": "blue",
@@ -29,11 +36,17 @@ class ReadingApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("微信读书")
-        self.geometry("600x400")
+        # 使用全局变量设置窗口大小
+        self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.configure(bg="#f0f0f0")
         self.create_widgets()
         self.timer_id = None
         self.curl_cmd = self.load_curl_config()
+        self.task = None
+        # 创建新的事件循环并设置为当前事件循环
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def load_curl_config(self):
         if os.path.exists(CONFIG_FILE):
@@ -104,7 +117,7 @@ class ReadingApp(tk.Tk):
         # 创建日志区域
         log_label = ttk.Label(
             self,
-            text="日志",
+            text="运行日志",
             font=(FONT_FAMILY, FONT_SIZE_LARGE),
             foreground=TEXT_COLOR,
         )
@@ -125,21 +138,46 @@ class ReadingApp(tk.Tk):
         logger.add(self.log_to_text, format="{time} {level} {message}")
 
     def get_valid_run_time(self):
-        while True:
-            run_time = simpledialog.askstring(
-                "输入运行时间", "请输入运行时间（分钟）："
-            )
-            if run_time is None:
-                return None
+        dialog = tk.Toplevel(self)
+        # 调大窗口大小 20%
+        new_width = int(WINDOW_WIDTH * 0.4)
+        new_height = int(WINDOW_HEIGHT * 0.2)
+        dialog.geometry(f"{new_width}x{new_height}")
+        dialog.title("输入运行时间")
+
+        label = tk.Label(
+            dialog,
+            text="请输入运行时间（分钟）：",
+            font=(FONT_FAMILY, FONT_SIZE_NORMAL),
+        )
+        label.pack(pady=10)
+
+        entry = tk.Entry(dialog, font=(FONT_FAMILY, FONT_SIZE_NORMAL))
+        entry.pack(pady=5)
+
+        result = None
+
+        def submit():
+            nonlocal result
             try:
-                run_time = int(run_time)
-                if run_time < 0:
-                    raise ValueError
-                return run_time
+                value = int(entry.get())
+                if value < 0:
+                    tkinter.messagebox.showerror("输入错误", "请输入一个有效的正整数。")
+                else:
+                    result = value
+                    dialog.destroy()
             except ValueError:
                 tkinter.messagebox.showerror("输入错误", "请输入一个有效的正整数。")
 
-    def start_function(self):
+        button = tk.Button(
+            dialog, text="提交", command=submit, font=(FONT_FAMILY, FONT_SIZE_NORMAL)
+        )
+        button.pack(pady=5)
+
+        dialog.wait_window()
+        return result
+
+    async def start_function_async(self):
         if self.curl_cmd is None:
             tkinter.messagebox.showwarning("未配置 Curl 命令", "请先配置 Curl 命令。")
             self.config_function()
@@ -148,7 +186,7 @@ class ReadingApp(tk.Tk):
         run_time = self.get_valid_run_time()
         if run_time is None:
             return
-        wx.run(
+        await wx.run(
             loop_num=run_time,
             onStart=logger.info,
             onSuccess=logger.debug,
@@ -157,13 +195,19 @@ class ReadingApp(tk.Tk):
             onFinish=logger.info,
         )
 
+    def start_function(self):
+        if self.task is None or self.task.done():
+            self.task = self.loop.create_task(self.start_function_async())
+
     def stop_function(self):
-        pass
+        if self.task and not self.task.done():
+            self.task.cancel()
+            logger.info("任务已取消")
 
     def config_function(self):
         config_window = tk.Toplevel(self)
-        # 增大窗口大小
-        config_window.geometry("600x400")
+        # 使用全局变量设置窗口大小
+        config_window.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         config_window.title("配置设置")
 
         # 创建一个框架来包含标签和保存按钮
@@ -216,7 +260,20 @@ class ReadingApp(tk.Tk):
             )
         curl_text.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
 
+    def on_close(self):
+        if self.task and not self.task.done():
+            self.task.cancel()
+        self.loop.stop()
+        self.destroy()
+
 
 if __name__ == "__main__":
     app = ReadingApp()
+
+    def run_loop():
+        app.loop.call_soon(app.loop.stop)
+        app.loop.run_forever()
+        app.after(100, run_loop)
+
+    app.after(100, run_loop)
     app.mainloop()
