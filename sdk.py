@@ -56,11 +56,22 @@ class WXReadSDK:
         self,
         headers: dict,
         cookies: dict,
-        payload: dict,
+        payload: dict = None,
     ):
         self.cookies: dict = cookies
         self.headers: dict = headers
-        self.payload: dict = payload
+        self.payload: dict = {
+            "appId": "wb182564874663h152492176",
+            "b": "ce032b305a9bc1ce0b0dd2a",
+            "c": "7cb321502467cbbc409e62d",
+            "ci": 70,
+            "co": 0,
+            "sm": "[插图]第三部广播纪元7年，程心艾AA说",
+            "pr": 74,
+            "rt": 30,
+            "ps": "b1d32a307a4c3259g016b67",
+            "pc": "080327b07a4c3259g018787",
+        }
 
     @staticmethod
     def encode_data(data):
@@ -184,7 +195,7 @@ class WXReadSDK:
             except json.JSONDecodeError:
                 raise ValueError("Could not parse payload as JSON.")
         payload.pop("s", None)  # 移除s字段
-        return {"headers": headers, "cookies": cookies, "payload": payload}
+        return {"headers": headers, "cookies": cookies}
 
     @classmethod
     def from_curl_bash(cls, bash_path: str):
@@ -194,7 +205,7 @@ class WXReadSDK:
         config = cls.parse_curl(curl_command)
         return cls(**config)  # type: ignore
 
-    async def run(
+    async def sync_run(
         self,
         loop_num: int = 5,
         residence_second: int = 60,  # 单位秒,
@@ -222,6 +233,48 @@ class WXReadSDK:
             if "succ" in resData:
                 index += 1
                 await asyncio.sleep(residence_second)
+                onSuccess(
+                    f"✅ 阅读成功，阅读进度：{(index - 1) * (residence_second / 60)} 分钟"
+                )
+            else:
+                logger.warning("❌ cookie 已过期，尝试刷新...")
+                if self.refresh():
+                    onRefresh("🔄 重新本次阅读。")
+                    # 保存刷新后的config
+                    continue
+                else:
+                    msg = "❌ 无法获取新密钥或者WXREAD_CURL_BASH配置有误，终止运行。"
+                    onFail(msg)
+        onFinish(f"🎉 阅读脚本已完成！成功阅读 {loop_num*(residence_second / 60)} 分钟")
+
+    def run(
+        self,
+        loop_num: int = 5,
+        residence_second: int = 30,  # 单位秒,
+        onStart: Callable = None,
+        onSuccess: Callable = None,
+        onRefresh: Callable = None,
+        onFail: Callable = None,
+        onFinish: Callable = None,
+    ):
+        if not onStart:  # 定义默认回调函数，避免报错导致程序中断
+            onStart = logger.info
+        if not onSuccess:  # 定义默认回调函数，避免报错导致程序中断
+            onSuccess = logger.debug
+        if not onRefresh:  # 定义默认回调函数，避免报错导致程序中断
+            onRefresh = logger.info
+        if not onFail:  # 定义默认回调函数，避免报错导致程序中断
+            onFail = logger.error
+        if not onFinish:  # 定义默认回调函数，避免报错导致程序中断
+            onFinish = logger.info
+
+        index = 1
+        while index <= loop_num:
+            onStart(f"⏱️ 尝试第 {index}/{loop_num} 次阅读...")
+            resData: dict = self.read()
+            if "succ" in resData:
+                index += 1
+                time.sleep(residence_second)
                 onSuccess(
                     f"✅ 阅读成功，阅读进度：{(index - 1) * (residence_second / 60)} 分钟"
                 )

@@ -71,7 +71,7 @@ class ReadingApp(tk.Tk):
 
     def load_curl_config(self):
         if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, "r") as file:
+            with open(CONFIG_FILE, "r", encoding="utf8") as file:
                 content = file.read().strip()
             if content:  # 检查文件内容是否为空字符串或只包含空格和换行符
                 return content
@@ -112,7 +112,7 @@ class ReadingApp(tk.Tk):
         self.log_text.config(state=tk.DISABLED)
 
     def save_curl_config(self):
-        with open(CONFIG_FILE, "w") as file:
+        with open(CONFIG_FILE, "w", encoding="utf8") as file:
             file.write(self.curl_cmd)
 
     def create_widgets(self):
@@ -216,7 +216,7 @@ class ReadingApp(tk.Tk):
         run_time = self.get_valid_run_time()
         if run_time is None:
             return
-        await wx.run(
+        await wx.sync_run(
             loop_num=run_time,
             onStart=logger.info,
             onSuccess=logger.debug,
