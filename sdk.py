@@ -56,12 +56,10 @@ class WXReadSDK:
         headers: dict,
         cookies: dict,
         payload: dict,
-        config_path: str = None,
     ):
         self.cookies: dict = cookies
         self.headers: dict = headers
         self.payload: dict = payload
-        self.config_path: str = config_path
 
     @staticmethod
     def encode_data(data):
@@ -118,7 +116,7 @@ class WXReadSDK:
         - 如果刷新失败，返回False。
         """
         new_skey = self.get_wr_skey(self.headers, self.cookies)
-        logger.info(f"刷新wr_skey: {new_skey}")
+        logger.info(f"刷新wr_skey: {self.cookies['wr_skey']}")
         if new_skey:  # 刷新成功，更新cookie中的wr_skey值
             self.cookies.update(wr_skey=new_skey)
             logger.info(f"刷新wr_skey成功: {self.cookies['wr_skey']}")
@@ -146,15 +144,6 @@ class WXReadSDK:
         )
         resData = response.json()
         return resData
-
-    @classmethod
-    def from_config(cls, config_path: str):
-        """从配置中创建实例"""
-        config = cls.load_config(config_path)
-        headers = config["headers"]
-        cookies = config["cookies"]
-        payload = config["payload"]
-        return cls(headers, cookies, payload, config_path)
 
     @staticmethod
     def parse_curl(curl_cmd):
@@ -193,45 +182,16 @@ class WXReadSDK:
                 payload = json.loads(payload_str)
             except json.JSONDecodeError:
                 raise ValueError("Could not parse payload as JSON.")
-
+        payload.pop("s", None)  # 移除s字段
         return {"headers": headers, "cookies": cookies, "payload": payload}
 
     @classmethod
-    def update_from_curl(cls, bash_path: str, config_path: str):
+    def from_curl_bash(cls, bash_path: str):
         """从curl中创建实例"""
-        # curl.sh
-        wx = cls.from_config(config_path)
-        with open(bash_path, "r", encoding="utf-8") as f:
+        with open(bash_path, "r", encoding="utf8") as f:
             curl_command = f.read()
         config = cls.parse_curl(curl_command)
-        wx.headers.update(config["headers"])
-        wx.cookies.update(config["cookies"])
-        wx.payload.update(config["payload"])
-        wx.save_config()
-
-    @staticmethod
-    def load_config(config_path: str) -> dict:
-        """加载配置"""
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = json.load(f)
-        return config
-
-    def save_config(self):
-        """保存配置"""
-        if not self.config_path:  # 未传入config_path，不保存config文件。
-            return
-        self.payload.pop("s", None)
-        with open(self.config_path, "w", encoding="utf-8") as f:
-            json.dump(self.config, f, indent=4, ensure_ascii=False)
-
-    @property
-    def config(self):
-        """转换为配置"""
-        return {
-            "headers": self.headers,
-            "cookies": self.cookies,
-            "payload": self.payload,
-        }
+        return cls(**config)  # type: ignore
 
     def run(
         self,
@@ -269,7 +229,6 @@ class WXReadSDK:
                 if self.refresh():
                     onRefresh("🔄 重新本次阅读。")
                     # 保存刷新后的config
-                    self.save_config()
                     continue
                 else:
                     msg = "❌ 无法获取新密钥或者WXREAD_CURL_BASH配置有误，终止运行。"
