@@ -250,6 +250,7 @@ class WXReadSDK:
             resData: dict = self.read()
             if "succ" in resData:
                 index += 1
+                time.sleep(residence_second)
                 onSuccess(
                     f"✅ 阅读成功，阅读进度：{(index - 1) * (residence_second / 60)} 分钟"
                 )
