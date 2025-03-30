@@ -12,16 +12,13 @@ from sdk import WXReadSDK
 logger.remove()
 
 # 定义全局样式常量
-FONT_FAMILY = "Courier New"
+FONT_FAMILY = "Microsoft YaHei Mono"
 FONT_SIZE_NORMAL = 12
 FONT_SIZE_LARGE = 14
 TEXT_COLOR = "black"
 BUTTON_BG_NORMAL = "#e0e0e0"
 BUTTON_BG_ACTIVE = "#d0d0d0"
 CONFIG_FILE = "curl_config.sh"
-# 新增全局变量用于设置宽高
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 600
 
 LEVEL_COLORS = {
     "DEBUG": "blue",
@@ -32,12 +29,34 @@ LEVEL_COLORS = {
 }
 
 
+def center_window_on_screen(window, width_ratio=0.5, height_ratio=0.5):
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    width = int(screen_width * width_ratio)
+    height = int(screen_height * height_ratio)
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+    window.geometry(f"{width}x{height}+{x}+{y}")
+
+
+def center_window_on_parent(parent, window, width_ratio=0.4, height_ratio=0.2):
+    parent_x = parent.winfo_x()
+    parent_y = parent.winfo_y()
+    parent_width = parent.winfo_width()
+    parent_height = parent.winfo_height()
+    width = int(parent_width * width_ratio)
+    height = int(parent_height * height_ratio)
+    x = parent_x + (parent_width - width) // 2
+    y = parent_y + (parent_height - height) // 2
+    window.geometry(f"{width}x{height}+{x}+{y}")
+
+
 class ReadingApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("微信读书")
-        # 使用全局变量设置窗口大小
-        self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+        # 根据屏幕分辨率按比例设置窗口大小并居中
+        center_window_on_screen(self)
         self.configure(bg="#f0f0f0")
         self.create_widgets()
         self.timer_id = None
@@ -47,11 +66,17 @@ class ReadingApp(tk.Tk):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        # 监听窗口大小变化事件
+        self.bind("<Configure>", self.on_window_resize)
 
     def load_curl_config(self):
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, "r") as file:
-                return file.read().strip()
+                content = file.read().strip()
+            if content:  # 检查文件内容是否为空字符串或只包含空格和换行符
+                return content
+            else:  # 如果文件内容为空，返回默认值或None等，根据实际需求决定
+                return None
         return None
 
     def log_to_text(self, message):
@@ -66,6 +91,9 @@ class ReadingApp(tk.Tk):
         formatted_time = f"{time_str.ljust(TIME_WIDTH - 1)}"
         formatted_level = f" | {level.ljust(LEVEL_WIDTH - 1)} | "
 
+        # 临时将日志框设置为可编辑状态
+        self.log_text.config(state=tk.NORMAL)
+
         # 插入时间部分
         self.log_text.insert(tk.END, formatted_time, "time")
         self.log_text.tag_config("time", foreground=TIME_COLOR)
@@ -79,6 +107,9 @@ class ReadingApp(tk.Tk):
         self.log_text.tag_config("message", foreground=MESSAGE_COLOR)
 
         self.log_text.see(tk.END)  # 滚动到最新的日志消息
+
+        # 将日志框设置为不可编辑状态
+        self.log_text.config(state=tk.DISABLED)
 
     def save_curl_config(self):
         with open(CONFIG_FILE, "w") as file:
@@ -133,16 +164,15 @@ class ReadingApp(tk.Tk):
             font=(FONT_FAMILY, FONT_SIZE_NORMAL),
             bd=2,
             relief=tk.SOLID,
+            state=tk.DISABLED,  # 初始设置为不可编辑状态
         )
         self.log_text.pack(fill=tk.BOTH, expand=True)
         logger.add(self.log_to_text, format="{time} {level} {message}")
 
     def get_valid_run_time(self):
         dialog = tk.Toplevel(self)
-        # 调大窗口大小 20%
-        new_width = int(WINDOW_WIDTH * 0.4)
-        new_height = int(WINDOW_HEIGHT * 0.2)
-        dialog.geometry(f"{new_width}x{new_height}")
+        # 将弹窗置于应用窗口中间
+        center_window_on_parent(self, dialog)
         dialog.title("输入运行时间")
 
         label = tk.Label(
@@ -150,7 +180,7 @@ class ReadingApp(tk.Tk):
             text="请输入运行时间（分钟）：",
             font=(FONT_FAMILY, FONT_SIZE_NORMAL),
         )
-        label.pack(pady=10)
+        label.pack(pady=5)
 
         entry = tk.Entry(dialog, font=(FONT_FAMILY, FONT_SIZE_NORMAL))
         entry.pack(pady=5)
@@ -206,8 +236,8 @@ class ReadingApp(tk.Tk):
 
     def config_function(self):
         config_window = tk.Toplevel(self)
-        # 使用全局变量设置窗口大小
-        config_window.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+        # 将配置窗口置于应用窗口中间
+        center_window_on_parent(self, config_window, width_ratio=0.7, height_ratio=0.7)
         config_window.title("配置设置")
 
         # 创建一个框架来包含标签和保存按钮
@@ -259,6 +289,10 @@ class ReadingApp(tk.Tk):
                 fg=TEXT_COLOR,
             )
         curl_text.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+
+    def on_window_resize(self, event):
+        # 这里可以添加窗口大小改变时的处理逻辑，例如调整组件大小
+        pass
 
     def on_close(self):
         if self.task and not self.task.done():
