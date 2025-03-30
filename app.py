@@ -2,14 +2,14 @@ import asyncio
 import os
 import tkinter as tk
 import tkinter.messagebox
-from tkinter import simpledialog, ttk
+from tkinter import ttk
 
 from loguru import logger
 
 from sdk import WXReadSDK
 
 # 去除默认的日志处理器，避免重复打印日志到控制台的问题
-# logger.remove()
+logger.remove()
 
 # 定义全局样式常量
 FONT_FAMILY = "Courier New"
