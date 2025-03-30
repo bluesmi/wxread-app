@@ -157,38 +157,44 @@ class WXReadSDK:
         return cls(headers, cookies, payload, config_path)
 
     @staticmethod
-    def convert(curl_command: str):
-        """提取bash接口中的headers与cookies
-        支持 -H 'Cookie: xxx' 和 -b 'xxx' 两种方式的cookie提取
+    def parse_curl(curl_cmd):
         """
+        解析 curl 命令，提取 headers、cookies 和 payload 并转换为字典。
+        :param curl_cmd: curl 命令字符串
+        :return: headers 字典、cookies 字典、payload 字典
+        """
+        headers = {}
+        cookies = {}
+        payload = {}
+
         # 提取 headers
-        headers_temp = {}
-        for match in re.findall(r"-H '([^:]+): ([^']+)'", curl_command):
-            headers_temp[match[0]] = match[1]
+        header_pattern = r"-H \'(.*?): (.*?)\'"
+        header_matches = re.findall(header_pattern, curl_cmd)
+        for key, value in header_matches:
+            headers[key] = value
 
         # 提取 cookies
-        cookies = {}
+        cookie_pattern = r"-b \'(.*?)\'"
+        cookie_match = re.search(cookie_pattern, curl_cmd)
+        if cookie_match:
+            cookie_str = cookie_match.group(1)
+            cookie_pairs = cookie_str.split("; ")
+            for pair in cookie_pairs:
+                if "=" in pair:
+                    key, value = pair.split("=", 1)
+                    cookies[key] = value
 
-        # 从 -H 'Cookie: xxx' 提取
-        cookie_header = next(
-            (v for k, v in headers_temp.items() if k.lower() == "cookie"), ""
-        )
+        # 提取 payload
+        payload_pattern = r"--data-raw \'(.*?)\'"
+        payload_match = re.search(payload_pattern, curl_cmd)
+        if payload_match:
+            payload_str = payload_match.group(1)
+            try:
+                payload = json.loads(payload_str)
+            except json.JSONDecodeError:
+                raise ValueError("Could not parse payload as JSON.")
 
-        # 从 -b 'xxx' 提取
-        cookie_b = re.search(r"-b '([^']+)'", curl_command)
-        cookie_string = cookie_b.group(1) if cookie_b else cookie_header
-
-        # 解析 cookie 字符串
-        if cookie_string:
-            for cookie in cookie_string.split("; "):
-                if "=" in cookie:
-                    key, value = cookie.split("=", 1)
-                    cookies[key.strip()] = value.strip()
-
-        # 移除 headers 中的 Cookie/cookie
-        headers = {k: v for k, v in headers_temp.items() if k.lower() != "cookie"}
-
-        return headers, cookies
+        return {"headers": headers, "cookies": cookies, "payload": payload}
 
     @classmethod
     def update_from_curl(cls, bash_path: str, config_path: str):
@@ -197,9 +203,10 @@ class WXReadSDK:
         wx = cls.from_config(config_path)
         with open(bash_path, "r", encoding="utf-8") as f:
             curl_command = f.read()
-        config = cls.convert(curl_command)
-        wx.headers.update(config[0])
-        wx.cookies.update(config[1])
+        config = cls.parse_curl(curl_command)
+        wx.headers.update(config["headers"])
+        wx.cookies.update(config["cookies"])
+        wx.payload.update(config["payload"])
         wx.save_config()
 
     @staticmethod
