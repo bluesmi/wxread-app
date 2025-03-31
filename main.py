@@ -24,13 +24,14 @@ if __name__ == "__main__":
 
     def onFinish(msg):
         logger.info(msg)
-        # pusher.push(msg)
+        pusher.push(msg)
 
     # 修改为异步运行
-    # asyncio.run(wx.sync_run())
-    wx.run(
-        loop_num=READ_NUM,
-        residence_second=RESIDENCE_TIME,
-        onFail=onFail,
-        onFinish=onFinish,
+    asyncio.run(
+        wx.sync_run(
+            loop_num=READ_NUM,
+            residence_second=RESIDENCE_TIME,
+            onFail=onFail,
+            onFinish=onFinish,
+        )
     )
