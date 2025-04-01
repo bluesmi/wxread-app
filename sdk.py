@@ -288,3 +288,36 @@ class WXReadSDK:
                     msg = "❌ 无法获取新密钥或者WXREAD_CURL_BASH配置有误，终止运行。"
                     onFail(msg)
         onFinish(f"🎉 阅读脚本已完成！成功阅读 {loop_num*(residence_second / 60)} 分钟")
+
+    def run_once(
+        self,
+        onStart: Callable = None,
+        onSuccess: Callable = None,
+        onRefresh: Callable = None,
+        onFail: Callable = None,
+        onFinish: Callable = None,
+    ):
+        if not onStart:  # 定义默认回调函数，避免报错导致程序中断
+            onStart = logger.info
+        if not onSuccess:  # 定义默认回调函数，避免报错导致程序中断
+            onSuccess = logger.debug
+        if not onRefresh:  # 定义默认回调函数，避免报错导致程序中断
+            onRefresh = logger.info
+        if not onFail:  # 定义默认回调函数，避免报错导致程序中断
+            onFail = logger.error
+        if not onFinish:  # 定义默认回调函数，避免报错导致程序中断
+            onFinish = logger.info
+
+        onStart(f"⏱️ 尝试第 1 次阅读...")
+        resData: dict = self.read()
+        if "succ" in resData:
+            onSuccess(f"✅ 阅读成功")
+        else:
+            logger.warning("❌ cookie 已过期，尝试刷新...")
+            if self.refresh():
+                onRefresh("🔄 重新本次阅读。")
+                # 保存刷新后的config
+            else:
+                msg = "❌ 无法获取新密钥或者WXREAD_CURL_BASH配置有误，终止运行。"
+                onFail(msg)
+        onFinish(f"🎉 阅读脚本已完成！")
