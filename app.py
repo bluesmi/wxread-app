@@ -139,6 +139,7 @@ class ReadingApp(tk.Tk):
             ("开始", self.start_function),
             ("停止", self.stop_function),
             ("配置curl", self.config_function),
+            ("清除日志", self.clear_log),  # 添加清除日志按钮
         ]
         for text, command in buttons:
             button = ttk.Button(button_frame, text=text, command=command)
@@ -289,6 +290,12 @@ class ReadingApp(tk.Tk):
                 fg=TEXT_COLOR,
             )
         curl_text.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+
+    def clear_log(self):
+        # 清除日志文本框的内容
+        self.log_text.config(state=tk.NORMAL)
+        self.log_text.delete(1.0, tk.END)
+        self.log_text.config(state=tk.DISABLED)
 
     def on_window_resize(self, event):
         # 这里可以添加窗口大小改变时的处理逻辑，例如调整组件大小
