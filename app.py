@@ -200,6 +200,9 @@ class ReadingApp(tk.Tk):
             except ValueError:
                 tkinter.messagebox.showerror("输入错误", "请输入一个有效的正整数。")
 
+        # 绑定回车键到提交函数
+        entry.bind("<Return>", lambda event: submit())
+
         button = tk.Button(
             dialog, text="提交", command=submit, font=(FONT_FAMILY, FONT_SIZE_NORMAL)
         )

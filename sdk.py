@@ -60,20 +60,19 @@ class WXReadSDK:
     ):
         self.cookies: dict = cookies
         self.headers: dict = headers
-        self.payload: dict = payload
-        print(payload)
-        # self.payload: dict = {
-        #     "appId": "wb182564874663h152492176",
-        #     "b": "ce032b305a9bc1ce0b0dd2a",
-        #     "c": "7cb321502467cbbc409e62d",
-        #     "ci": 70,
-        #     "co": 0,
-        #     "sm": "[插图]第三部广播纪元7年，程心艾AA说",
-        #     "pr": 74,
-        #     "rt": 30,
-        #     "ps": "b1d32a307a4c3259g016b67",
-        #     "pc": "080327b07a4c3259g018787",
-        # }
+        book = {
+            "appId": "wb182564874663h152492176",
+            "b": "ce032b305a9bc1ce0b0dd2a",
+            "c": "7cb321502467cbbc409e62d",
+            "ci": 70,
+            "co": 0,
+            "sm": "[插图]第三部广播纪元7年，程心艾AA说",
+            "pr": 74,
+            "rt": 30,
+            "ps": "b1d32a307a4c3259g016b67",
+            "pc": "080327b07a4c3259g018787",
+        }
+        self.payload: dict = payload or book
 
     @staticmethod
     def encode_data(data):
