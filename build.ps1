@@ -1,0 +1,2 @@
+pyinstaller --onefile --windowed --version-file=version_file.txt --icon logo.ico --name wxread app.py
+pyinstaller --onefile --windowed --version-file=version_file.txt --icon logo.ico --name wxreadcli main.py
