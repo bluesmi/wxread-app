@@ -186,6 +186,9 @@ class ReadingApp(tk.Tk):
         entry = tk.Entry(dialog, font=(FONT_FAMILY, FONT_SIZE_NORMAL))
         entry.pack(pady=5)
 
+        # 自动将焦点设置到输入框
+        entry.focus_set()
+
         result = None
 
         def submit():
