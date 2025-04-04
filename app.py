@@ -224,7 +224,7 @@ class ReadingApp(tk.Tk):
         if run_time is None:
             return
         await wx.sync_run(
-            loop_num=run_time,
+            loop_num=run_time * 2,
             onStart=logger.info,
             onSuccess=logger.debug,
             onRefresh=logger.info,

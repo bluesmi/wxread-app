@@ -8,8 +8,7 @@ from sdk import WxPusherNotifier, WXReadSDK
 if __name__ == "__main__":
     CURL_PATH = "./curl_config.sh"
     CONFIG_PATH = "config.ini"
-    READ_NUM = 30
-    RESIDENCE_TIME = 60  # 单位秒
+    READ_NUM = 60
 
     config = configparser.ConfigParser()
     config.read(CONFIG_PATH)
@@ -29,8 +28,7 @@ if __name__ == "__main__":
     # 修改为异步运行
     asyncio.run(
         wx.sync_run(
-            loop_num=READ_NUM,
-            residence_second=RESIDENCE_TIME,
+            loop_num=READ_NUM * 2,
             onFail=onFail,
             onFinish=onFinish,
         )
