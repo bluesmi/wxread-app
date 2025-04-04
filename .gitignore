@@ -198,3 +198,4 @@ cython_debug/
 *.vsix
 config.ini
 curl_config.sh
+config/
