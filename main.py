@@ -77,6 +77,7 @@ if __name__ == "__main__":
     READ_NUM = 60
 
     setup_logger()
-    WXPUSHER_SPT = load_config() if CONFIG_PATH.exists() else None
+    # WXPUSHER_SPT = load_config() if CONFIG_PATH.exists() else None
+    WXPUSHER_SPT = None
 
     asyncio.run(main())

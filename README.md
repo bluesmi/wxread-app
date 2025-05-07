@@ -4,12 +4,15 @@
 
 ## 功能
 
+分为两种运行方式：python和应用。
+
 ### python
 
 `python main.py`
 
-1. 阅读支持多账户阅读，阅读书籍从 `config/curl_config.sh` 文件中读取。
-2. 多账户阅读需要将所有 `curl` 信息以 `.sh` 保存到 `config` 文件夹中。
+1. 配置环境 `pip install -r requirements.txt`
+2. 阅读支持多账户阅读，阅读书籍从 `config/curl_config.sh` 文件中读取。
+3. 多账户阅读需要将所有 `curl` 信息以 `.sh` 保存到 `config` 文件夹中。
 
 ### 应用
 
