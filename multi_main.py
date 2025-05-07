@@ -5,7 +5,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from api.notifer import WxPusherNotifier
+from api.notifier import WxPusherNotifier
 from api.reader import WXReader
 
 
