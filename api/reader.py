@@ -142,7 +142,7 @@ class WXReader:
         c = random.choice(self.chapter)
         ct = int(time.time())
         rt = ct - lastTime
-        ts = int(time.time() * 1000)
+        ts = int(ct * 1000) + random.randint(0, 1000)
         rn = random.randint(0, 1000)
         sg = hashlib.sha256(f"{ts}{rn}{KEY}".encode()).hexdigest()
         self.payload.update(
@@ -235,6 +235,7 @@ class WXReader:
             resData: dict = self.read(lastTime)
             if "succ" in resData:
                 if "synckey" in resData:
+                    lastTime: int = self.payload["ct"]
                     index += 1
 
                     await asyncio.sleep(RESIDENCE)
@@ -254,3 +255,8 @@ class WXReader:
                     onFail(msg)
                     raise Exception(msg)
         onFinish(f"🎉 阅读脚本已完成！成功阅读 {loop_num*(RESIDENCE / 60)} 分钟")
+
+
+if __name__ == "__main__":
+    reader = WXReader.from_curl_bash("./curl.sh")
+    asyncio.run(reader.sync_run(loop_num=120))
