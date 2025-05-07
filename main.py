@@ -22,10 +22,10 @@ async def process_curl_path(curl_path, read_num, share_payload):
         logger.info(f"{FILE_NAME}---{msg}")
 
     def onSuccess(msg):
-        logger.info(f"{FILE_NAME}---{msg}")
+        logger.success(f"{FILE_NAME}---{msg}")
 
-    def onRefresh(msg):
-        logger.info(f"{FILE_NAME}---{msg}")
+    def onDebug(msg):
+        logger.debug(f"{FILE_NAME}---{msg}")
 
     def onFail(msg):
         logger.error(f"{FILE_NAME}---{msg}")
@@ -41,7 +41,7 @@ async def process_curl_path(curl_path, read_num, share_payload):
         loop_num=read_num * 2,
         onStart=onStart,
         onSuccess=onSuccess,
-        onRefresh=onRefresh,
+        onDebug=onDebug,
         onFail=onFail,
         onFinish=onFinish,
     )
@@ -61,7 +61,7 @@ def load_config():
 
 async def main():
     share_payload = load_share_payload(CURL_PATH / "curl_config.sh")
-    print(share_payload)
+    print("共享负载: ", share_payload)
     tasks = (
         process_curl_path(curl_path, READ_NUM, share_payload)
         for curl_path in CURL_PATH.glob("*.sh")

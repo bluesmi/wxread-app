@@ -11,44 +11,6 @@ import requests
 from loguru import logger
 
 
-class WxPusherNotifier:
-    def __init__(self, spt):
-        self.wxpusher_simple_url = (
-            "https://wxpusher.zjiecode.com/api/send/message/{}/{}"
-        )
-        self.spt = spt  # 添加 spt 参数
-
-    def push(
-        self,
-        content,
-        attempt_times: int = 5,
-        onSuccess: Callable = None,
-        onRefresh: Callable = None,
-        onFail: Callable = None,
-    ):
-        """WxPusher消息推送（极简方式）"""
-        if not onSuccess:  # 定义默认回调函数，避免报错导致程序中断
-            onSuccess = logger.debug
-        if not onRefresh:  # 定义默认回调函数，避免报错导致程序中断
-            onRefresh = logger.info
-        if not onFail:  # 定义默认回调函数，避免报错导致程序中断
-            onFail = logger.error
-        url = self.wxpusher_simple_url.format(self.spt, content)
-
-        for attempt in range(attempt_times):
-            try:
-                response = requests.get(url, timeout=10)
-                response.raise_for_status()
-                onSuccess(f"✅ WxPusher响应: {response.json()['msg']}")
-                break
-            except requests.exceptions.RequestException as e:
-                onFail(f"❌ WxPusher推送失败: {e}")
-                if attempt < attempt_times - 1:
-                    sleep_time = random.randint(180, 360)
-                    onRefresh(f"将在 {sleep_time} 秒后重试...")
-                    time.sleep(sleep_time)
-
-
 class WXReadSDK:
     """微信读书SDK"""
 
@@ -56,11 +18,13 @@ class WXReadSDK:
         self,
         headers: dict,
         cookies: dict,
+        book: list = None,
+        chapter: list = None,
         payload: dict = None,
     ):
         self.cookies: dict = cookies
         self.headers: dict = headers
-        book = {
+        data = {
             "appId": "wb182564874663h152492176",
             "b": "ce032b305a9bc1ce0b0dd2a",
             "c": "7cb321502467cbbc409e62d",
@@ -72,7 +36,39 @@ class WXReadSDK:
             "ps": "b1d32a307a4c3259g016b67",
             "pc": "080327b07a4c3259g018787",
         }
-        self.payload: dict = payload or book
+        self.book = book or [
+            "36d322f07186022636daa5e",
+            "6f932ec05dd9eb6f96f14b9",
+            "43f3229071984b9343f04a4",
+            "d7732ea0813ab7d58g0184b8",
+            "3d03298058a9443d052d409",
+            "4fc328a0729350754fc56d4",
+            "a743220058a92aa746632c0",
+            "140329d0716ce81f140468e",
+            "1d9321c0718ff5e11d9afe8",
+            "ff132750727dc0f6ff1f7b5",
+            "e8532a40719c4eb7e851cbe",
+            "9b13257072562b5c9b1c8d6",
+        ]
+        self.chapter = chapter or [
+            "ecc32f3013eccbc87e4b62e",
+            "a87322c014a87ff679a21ea",
+            "e4d32d5015e4da3b7fbb1fa",
+            "16732dc0161679091c5aeb1",
+            "8f132430178f14e45fce0f7",
+            "c9f326d018c9f0f895fb5e4",
+            "45c322601945c48cce2e120",
+            "d3d322001ad3d9446802347",
+            "65132ca01b6512bd43d90e3",
+            "c20321001cc20ad4d76f5ae",
+            "c51323901dc51ce410c121b",
+            "aab325601eaab3238922e53",
+            "9bf32f301f9bf31c7ff0a60",
+            "c7432af0210c74d97b01b1c",
+            "70e32fb021170efdf2eca12",
+            "6f4322302126f4922f45dec",
+        ]
+        self.payload: dict = payload or data
 
     @staticmethod
     def encode_data(data):
@@ -80,6 +76,16 @@ class WXReadSDK:
         return "&".join(
             f"{k}={urllib.parse.quote(str(data[k]), safe='')}"
             for k in sorted(data.keys())
+        )
+
+    def _fix_no_synckey(self):
+        """修复无 synckey 的情况"""
+        FIX_SYNCKEY_URL = "https://weread.qq.com/web/book/chapterInfos"
+        requests.post(
+            FIX_SYNCKEY_URL,
+            headers=self.headers,
+            cookies=self.cookies,
+            data=json.dumps({"bookIds": ["3300060341"]}, separators=(",", ":")),
         )
 
     @staticmethod
@@ -102,7 +108,7 @@ class WXReadSDK:
         return hex(_7032f5 + _cc1055)[2:].lower()
 
     @staticmethod
-    def get_wr_skey(headers, cookies):
+    def _get_wr_skey(headers, cookies):
         """刷新cookie密钥"""
         RENEW_URL = "https://weread.qq.com/web/login/renewal"
         COOKIE_DATA = {"rq": "%2Fweb%2Fbook%2Fread"}
@@ -117,37 +123,45 @@ class WXReadSDK:
                 return cookie.split("=")[-1][:8]
         return None
 
-    def refresh(self):
+    def refresh_cookie(self):
         """
         刷新cookie密钥
-
-        本函数通过发送POST请求到指定的URL来刷新用户的cookie密钥，
-        以确保用户登录状态的有效性。在刷新成功后，函数会更新self.cookies中的wr_skey值。
-
-        returns:
-        - 如果刷新成功，返回True；
-        - 如果刷新失败，返回False。
         """
-        new_skey = self.get_wr_skey(self.headers, self.cookies)
+        new_skey = self._get_wr_skey(self.headers, self.cookies)
         logger.info(f"刷新wr_skey: {self.cookies['wr_skey']}")
-        if new_skey:  # 刷新成功，更新cookie中的wr_skey值
+        if new_skey:
             self.cookies.update(wr_skey=new_skey)
             logger.info(f"刷新wr_skey成功: {self.cookies['wr_skey']}")
             return True
         return False
 
-    def _prepare(self):
+    def _prepare_payload(self, lastTime: int):
+        """准备请求负载"""
         KEY = "3c5c8717f3daf09iop3423zafeqoi"
+        b = random.choice(self.book)
+        c = random.choice(self.chapter)
         ct = int(time.time())
+        rt = ct - lastTime
         ts = int(time.time() * 1000)
         rn = random.randint(0, 1000)
         sg = hashlib.sha256(f"{ts}{rn}{KEY}".encode()).hexdigest()
-        self.payload.update(ct=ct, ts=ts, rn=rn, sg=sg)
+        self.payload.update(
+            {
+                "b": b,
+                "c": c,
+                "ct": ct,
+                "rt": rt,
+                "ts": ts,
+                "rn": rn,
+                "sg": sg,
+            }
+        )
 
-    def read(self) -> dict:
+    def read(self, lastTime: int) -> dict:
         """阅读接口"""
         READ_URL = "https://weread.qq.com/web/book/read"
-        self._prepare()
+
+        self._prepare_payload(lastTime)
         s = self.cal_hash(self.encode_data(self.payload))
         response = requests.post(
             READ_URL,
@@ -155,27 +169,22 @@ class WXReadSDK:
             cookies=self.cookies,
             data=json.dumps({**self.payload, "s": s}, separators=(",", ":")),
         )
-        resData = response.json()
-        return resData
+        return response.json()
 
     @staticmethod
     def parse_curl(curl_cmd):
         """
         解析 curl 命令，提取 headers、cookies 和 payload 并转换为字典。
-        :param curl_cmd: curl 命令字符串
-        :return: headers 字典、cookies 字典、payload 字典
         """
         headers = {}
         cookies = {}
         payload = {}
 
-        # 提取 headers
         header_pattern = r"-H \'(.*?): (.*?)\'"
         header_matches = re.findall(header_pattern, curl_cmd)
         for key, value in header_matches:
             headers[key] = value
 
-        # 提取 cookies
         cookie_pattern = r"-b \'(.*?)\'"
         cookie_match = re.search(cookie_pattern, curl_cmd)
         if cookie_match:
@@ -186,7 +195,6 @@ class WXReadSDK:
                     key, value = pair.split("=", 1)
                     cookies[key] = value
 
-        # 提取 payload
         payload_pattern = r"--data-raw \'(.*?)\'"
         payload_match = re.search(payload_pattern, curl_cmd)
         if payload_match:
@@ -195,12 +203,15 @@ class WXReadSDK:
                 payload = json.loads(payload_str)
             except json.JSONDecodeError:
                 raise ValueError("Could not parse payload as JSON.")
-        payload.pop("s", None)  # 移除s字段
+        # 移除 s 参数，避免后续操做要每次移除
+        payload.pop("s", None)
         return {"headers": headers, "cookies": cookies, "payload": payload}
 
     @classmethod
     def from_curl_bash(cls, bash_path: str):
-        """从curl中创建实例"""
+        """
+        从curl中提取 headers、cookies 和 payload，然后创建实例，
+        """
         with open(bash_path, "r", encoding="utf8") as f:
             curl_command = f.read()
         config = cls.parse_curl(curl_command)
@@ -209,41 +220,37 @@ class WXReadSDK:
     async def sync_run(
         self,
         loop_num: int = 5,
-        residence_second: int = 30,  # 单位秒,
-        onStart: Callable = None,
-        onSuccess: Callable = None,
-        onRefresh: Callable = None,
-        onFail: Callable = None,
-        onFinish: Callable = None,
+        onStart: Callable = logger.info,
+        onSuccess: Callable = logger.success,
+        onDebug: Callable = logger.debug,
+        onFail: Callable = logger.error,
+        onFinish: Callable = logger.info,
     ):
-        if not onStart:  # 定义默认回调函数，避免报错导致程序中断
-            onStart = logger.info
-        if not onSuccess:  # 定义默认回调函数，避免报错导致程序中断
-            onSuccess = logger.debug
-        if not onRefresh:  # 定义默认回调函数，避免报错导致程序中断
-            onRefresh = logger.info
-        if not onFail:  # 定义默认回调函数，避免报错导致程序中断
-            onFail = logger.error
-        if not onFinish:  # 定义默认回调函数，避免报错导致程序中断
-            onFinish = logger.info
-
+        RESIDENCE: int = 30
+        self.refresh_cookie()
         index = 1
+        lastTime = int(time.time()) - RESIDENCE
         while index <= loop_num:
             onStart(f"⏱️ 尝试第 {index}/{loop_num} 次阅读...")
-            resData: dict = self.read()
+            resData: dict = self.read(lastTime)
             if "succ" in resData:
-                index += 1
-                await asyncio.sleep(residence_second)
-                onSuccess(
-                    f"✅ 阅读成功，阅读进度：{(index - 1) * (residence_second / 60)} 分钟"
-                )
+                if "synckey" in resData:
+                    index += 1
+
+                    await asyncio.sleep(RESIDENCE)
+                    onSuccess(
+                        f"✅ 阅读成功，阅读进度：{(index - 1) * (RESIDENCE / 60)} 分钟"
+                    )
+                else:
+                    onDebug("❌ 无 synckey，尝试修复...")
+                    self._fix_no_synckey()
             else:
                 logger.warning("❌ cookie 已过期，尝试刷新...")
-                if self.refresh():
-                    onRefresh("🔄 重新本次阅读。")
-                    # 保存刷新后的config
+                if self.refresh_cookie():
+                    onSuccess("🔄 重新本次阅读。")
                     continue
                 else:
                     msg = "❌ 无法获取新密钥或者WXREAD_CURL_BASH配置有误，终止运行。"
                     onFail(msg)
-        onFinish(f"🎉 阅读脚本已完成！成功阅读 {loop_num*(residence_second / 60)} 分钟")
+                    raise Exception(msg)
+        onFinish(f"🎉 阅读脚本已完成！成功阅读 {loop_num*(RESIDENCE / 60)} 分钟")
