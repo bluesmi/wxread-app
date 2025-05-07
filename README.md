@@ -4,7 +4,11 @@
 
 ## 功能
 
-分为两种运行方式：python和应用。
+分为三种种运行方式：github、python、app。
+
+### github
+
+参考 [findmover/wxread](https://github.com/findmover/wxread)
 
 ### python
 

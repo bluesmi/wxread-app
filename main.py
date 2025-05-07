@@ -1,84 +1,57 @@
-import asyncio  # 添加 asyncio 导入
-import configparser
-import datetime
-from pathlib import Path
+import asyncio
+import os
 
-from loguru import logger
-
-from api.notifer import WxPusherNotifier
+from api.notifier import Notifier
 from api.reader import WXReader
 
+# 阅读次数 默认40次/20分钟
+READ_NUM = int(os.getenv("READ_NUM") or 40)
+# 需要推送时可选，可选pushplus、wxpusher、telegram
+PUSH_METHOD = os.getenv("PUSH_METHOD")
+# pushplus推送时需填
+PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN")
+# telegram推送时需填
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+# wxpusher推送时需填
+WXPUSHER_SPT = os.getenv("WXPUSHER_SPT")
+# read接口的bash命令，本地部署时可对应替换headers、cookies
+curl_str = os.getenv("WXREAD_CURL_BASH")
 
-def load_share_payload(curl_path):
-    wx = WXReader.from_curl_bash(curl_path)
-    return wx.payload
+
+# 新增：检查推送 token 是否存在
+def has_valid_push_token(push_method):
+    if push_method == "pushplus":
+        return bool(PUSHPLUS_TOKEN)
+    elif push_method == "telegram":
+        return bool(TELEGRAM_BOT_TOKEN) and bool(TELEGRAM_CHAT_ID)
+    elif push_method == "wxpusher":
+        return bool(WXPUSHER_SPT)
+    return False
 
 
-async def process_curl_path(curl_path, read_num, share_payload):
-    FILE_NAME = Path(curl_path).stem
-    if WXPUSHER_SPT:
-        pusher = WxPusherNotifier(WXPUSHER_SPT)
+config = WXReader.parse_curl(curl_str)
+reader = WXReader(**config)
 
-    def onStart(msg):
-        logger.info(f"{FILE_NAME}---{msg}")
-
-    def onSuccess(msg):
-        logger.success(f"{FILE_NAME}---{msg}")
-
-    def onDebug(msg):
-        logger.debug(f"{FILE_NAME}---{msg}")
-
-    def onFail(msg):
-        logger.error(f"{FILE_NAME}---{msg}")
-
-    def onFinish(msg):
-        logger.info(f"{FILE_NAME}---{msg}")
-        if WXPUSHER_SPT:
-            pusher.push(f"🎉 {FILE_NAME} 阅读脚本已完成！")
-
-    wx = WXReader.from_curl_bash(curl_path)
-    wx.payload = share_payload  # 修改 payload 属性
-    await wx.sync_run(
-        loop_num=read_num * 2,
-        onStart=onStart,
-        onSuccess=onSuccess,
-        onDebug=onDebug,
-        onFail=onFail,
-        onFinish=onFinish,
+# 新增：根据推送 token 存在与否决定是否推送
+if PUSH_METHOD and has_valid_push_token(PUSH_METHOD):
+    notifier = Notifier(
+        PUSH_METHOD,
+        {
+            "PUSHPLUS_TOKEN": PUSHPLUS_TOKEN,
+            "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
+            "TELEGRAM_CHAT_ID": TELEGRAM_CHAT_ID,
+            "WXPUSHER_SPT": WXPUSHER_SPT,
+        },
     )
-
-
-def setup_logger():
-    today = datetime.date.today()
-    log_file = f"logs/{today}.log"
-    logger.add(log_file, rotation="1 day", retention="7 days", encoding="utf-8")
-
-
-def load_config():
-    config = configparser.ConfigParser()
-    config.read(CONFIG_PATH)
-    return config.get("WXPUSHER", "SPT")
-
-
-async def main():
-    share_payload = load_share_payload(CURL_PATH / "curl_config.sh")
-    print("共享负载: ", share_payload)
-    tasks = (
-        process_curl_path(curl_path, READ_NUM, share_payload)
-        for curl_path in CURL_PATH.glob("*.sh")
+    notifier.onStart(f"📕 开始阅读，共{ READ_NUM/2 }分钟")
+    asyncio.run(
+        reader.sync_run(
+            loop_num=READ_NUM,
+            onFail=notifier.onFail,
+            onFinish=notifier.onFinish,
+        )
     )
-    # 修改为异步运行
-    await asyncio.gather(*tasks)
-
-
-if __name__ == "__main__":
-    # config 文件夹下所有.sh
-    CURL_PATH = Path("./config")
-    CONFIG_PATH = Path("./config/key.ini")
-    READ_NUM = 60
-
-    setup_logger()
-    # WXPUSHER_SPT = load_config() if CONFIG_PATH.exists() else None
-    WXPUSHER_SPT = None
-
-    asyncio.run(main())
+else:
+    # 如果没有有效的推送 token，则直接运行阅读逻辑
+    asyncio.run(reader.sync_run(loop_num=READ_NUM))
