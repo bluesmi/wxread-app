@@ -5,11 +5,12 @@ from pathlib import Path
 
 from loguru import logger
 
-from sdk import WxPusherNotifier, WXReadSDK
+from api.notifer import WxPusherNotifier
+from api.reader import WXReader
 
 
 def load_share_payload(curl_path):
-    wx = WXReadSDK.from_curl_bash(curl_path)
+    wx = WXReader.from_curl_bash(curl_path)
     return wx.payload
 
 
@@ -35,7 +36,7 @@ async def process_curl_path(curl_path, read_num, share_payload):
         if WXPUSHER_SPT:
             pusher.push(f"🎉 {FILE_NAME} 阅读脚本已完成！")
 
-    wx = WXReadSDK.from_curl_bash(curl_path)
+    wx = WXReader.from_curl_bash(curl_path)
     wx.payload = share_payload  # 修改 payload 属性
     await wx.sync_run(
         loop_num=read_num * 2,

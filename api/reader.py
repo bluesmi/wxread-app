@@ -11,7 +11,7 @@ import requests
 from loguru import logger
 
 
-class WXReadSDK:
+class WXReader:
     """微信读书SDK"""
 
     def __init__(

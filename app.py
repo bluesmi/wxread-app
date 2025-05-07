@@ -6,7 +6,7 @@ from tkinter import ttk
 
 from loguru import logger
 
-from sdk import WXReadSDK
+from api.reader import WXReader
 
 # 去除默认的日志处理器，避免重复打印日志到控制台的问题
 logger.remove()
@@ -219,7 +219,7 @@ class ReadingApp(tk.Tk):
             tkinter.messagebox.showwarning("未配置 Curl 命令", "请先配置 Curl 命令。")
             self.config_function()
             return
-        wx = WXReadSDK.from_curl_bash(CONFIG_FILE)
+        wx = WXReader.from_curl_bash(CONFIG_FILE)
         run_time = self.get_valid_run_time()
         if run_time is None:
             return
