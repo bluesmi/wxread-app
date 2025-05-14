@@ -4,8 +4,8 @@ import os
 from api.notifier import Notifier
 from api.reader import WXReader
 
-# 阅读时长，单位分钟，默认60分钟
-READ_MINUTE = int(os.getenv("READ_MINUTE") or 60)
+# 阅读时长，单位分钟，默认20分钟
+READ_MINUTE = int(os.getenv("READ_MINUTE") or 20)
 # 需要推送时可选，可选pushplus、wxpusher、telegram
 PUSH_METHOD = os.getenv("PUSH_METHOD")
 # pushplus推送时需填
