@@ -22,7 +22,8 @@ CONFIG_FILE = "curl_config.sh"
 
 LEVEL_COLORS = {
     "DEBUG": "blue",
-    "INFO": "green",
+    "INFO": "Turquoise",
+    "SUCCESS": "green",
     "WARNING": "orange",
     "ERROR": "red",
     "CRITICAL": "purple",
@@ -223,14 +224,11 @@ class ReadingApp(tk.Tk):
         run_time = self.get_valid_run_time()
         if run_time is None:
             return
-        await wx.sync_run(
-            loop_num=run_time * 2,
-            onStart=logger.info,
-            onSuccess=logger.debug,
-            onRefresh=logger.info,
-            onFail=logger.error,
-            onFinish=logger.info,
-        )
+        try:
+            await wx.sync_run(loop_num=run_time * 2)
+        except Exception:  # 捕获网络相关异常
+            logger.error("网络错误: 请检查网络连接或配置是否正确。")
+            self.stop_function()
 
     def start_function(self):
         if self.task is None or self.task.done():
