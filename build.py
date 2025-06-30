@@ -11,10 +11,10 @@ def write_version_file(version: str, author: str, app_name: str, description: st
     :param app_name: 应用名称
     :param description: 应用描述
     """
-
+    file_version = ",".join(version.split("."))
     metadata = {
-        "FILE_VERSION": f"({",".join(version.split("."))})",  # 文件版本号
-        "PRODUCT_VERSION": f"({",".join(version.split("."))})",  # 产品版本
+        "FILE_VERSION": f"({file_version})",  # 文件版本号
+        "PRODUCT_VERSION": f"({file_version})",  # 产品版本
         "COMPANY_NAME": author,  # 公司名称
         "FILE_DESCRIPTION": description,  # 文件描述
         "INTERNAL_NAME": app_name,  # 内部名称
