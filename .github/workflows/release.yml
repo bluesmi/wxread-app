@@ -1,0 +1,36 @@
+name: Release Python Package with UV
+
+on:
+  push:
+    tags:
+      - 'v*' # 当有以 v 开头的 tag 被推送到仓库时触发
+
+jobs:
+  release-on-win:
+    name: Release on Windows
+    permissions:  # 添加权限设置
+      contents: write  # 允许读写仓库内容
+      
+    runs-on: windows-latest
+    env:
+      PYTHONIOENCODING: utf-8  # 强制 Python 使用 UTF-8 编码
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Install UV
+      run: |
+        powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+        
+    - name: Sync dependencies with UV
+      run: uv sync
+      
+    - name: Build the project
+      run: uv run build.py
+
+    - name: Create Release
+      uses: ncipollo/release-action@v1.18.0
+      with:
+          artifacts: ./dist/*
