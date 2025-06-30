@@ -28,7 +28,7 @@ def write_version_file(version: str, author: str, app_name: str, description: st
 
 
 AUTHOR = "MorningStart"
-VERSION = "2.0.0.0"
+VERSION = "1.4.0.0"
 APP_NAME = "wxreader"
 ICON = "logo.ico"
 DESCRIPTION = "一个基于 Python 的微信读书阅读助手"
