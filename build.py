@@ -19,7 +19,7 @@ def write_version_file(version: str, author: str, app_name: str, description: st
         "FILE_DESCRIPTION": description,  # 文件描述
         "INTERNAL_NAME": app_name,  # 内部名称
         "LEGAL_COPYRIGHT": f"Copyright (C) 2023 {author}",  # 版权信息
-        "ORIGINAL_FILENAME": "visx.exe",  # 原始文件名
+        "ORIGINAL_FILENAME": "wxread.exe",  # 原始文件名
         "PRODUCT_NAME": app_name,  # 产品名称
     }
     info = Path("./templates/version_tmp.txt").read_text(encoding="utf-8")
@@ -29,10 +29,11 @@ def write_version_file(version: str, author: str, app_name: str, description: st
 
 AUTHOR = "MorningStart"
 VERSION = "2.0.0.0"
-APP_NAME = "visx"
+APP_NAME = "wxreader"
 ICON = "logo.ico"
+DESCRIPTION = "一个基于 Python 的微信读书阅读助手"
 
-write_version_file(VERSION, AUTHOR, APP_NAME)
+write_version_file(VERSION, AUTHOR, APP_NAME, DESCRIPTION)
 # 构建 pyinstaller 命令
 cmd = [
     "pyinstaller",
